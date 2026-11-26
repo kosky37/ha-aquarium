@@ -11,7 +11,7 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/kosky37/ha-aquarium/issues",
   "requirements": [],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "after_dependencies": [
     "frontend",
     "http"

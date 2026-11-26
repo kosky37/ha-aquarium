@@ -263,6 +263,7 @@ export function discover(hass, config = {}) {
 
 const STYLE = `
   :host { display: block; }
+  [hidden] { display: none !important; }
   ha-card { padding: 16px; overflow: hidden; }
   .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .title { font-size: 1.25rem; font-weight: 500; flex: 1 1 auto; display: flex; align-items: center; gap: 8px; }
@@ -336,7 +337,9 @@ const STYLE = `
   .note { font-size: 0.8rem; color: var(--secondary-text-color); }
   .missing { padding: 8px 0; color: var(--secondary-text-color); }
   @media (max-width: 520px) {
+    .info { flex: 1 1 0; }
     .quick { order: 3; flex-basis: 100%; overflow-x: auto; }
+    .quick:empty { display: none; }
     .bright { flex: 1; }
   }
 `;
