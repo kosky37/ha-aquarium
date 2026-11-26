@@ -160,6 +160,11 @@
       "mode": {
         "name": "Mode"
       }
+    },
+    "button": {
+      "reset_mode": {
+        "name": "Reset mode"
+      }
     }
   }
 }

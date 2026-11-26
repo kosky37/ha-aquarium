@@ -50,12 +50,12 @@ After a restart, the integration checks every item against its schedule and only
 - **Delay between toggles**: how long to wait after each off and each on while switching modes.
 - **Off time that resets the mode**: if the lamp stays off at least this long, it starts again from the first mode.
 
-The integration can't read the lamp's mode, so it works it out from the plug's off and on changes. If the lamp ever shows a different mode, turn it off for longer than the reset time and the count starts again.
+The integration can't read the lamp's mode, so it works it out from the plug's off and on changes. While it is switching modes itself, and for a few seconds after, it ignores the plug's status reports, because some plugs report an extra off and on after a command. If the lamp ever shows a different mode, press **Reset mode**: the lamp stays off longer than the reset time and comes back in the first mode.
 
 ## Entities
 
 | Item | Entities |
 | --- | --- |
-| Light | light (with brightness or the modes as effects), Mode select for lamps with modes, Schedule switch, Next change sensor |
+| Light | light (with brightness or the modes as effects), Mode select and Reset mode button for lamps with modes, Schedule switch, Next change sensor |
 | Device | switch, Schedule switch, Next change sensor |
 | Sensor | sensor, Out of range binary sensor when limits are set |

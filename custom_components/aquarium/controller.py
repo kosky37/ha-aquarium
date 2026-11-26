@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
@@ -52,6 +52,7 @@ from .schedule import (
 _LOGGER = logging.getLogger(__name__)
 
 WAIT_TIMEOUT = 15.0
+ECHO_GRACE = timedelta(seconds=5)
 BRIGHTNESS_TOLERANCE = 3
 
 
@@ -278,6 +279,8 @@ class LightItem(ScheduledItem):
         self.transition = float(subentry.data.get(CONF_TRANSITION, DEFAULT_TRANSITION) or 0)
         self.mode_index = 0
         self._off_since: datetime | None = None
+        self._busy = False
+        self._quiet_until: datetime | None = None
         super().__init__(hass, entry, subentry)
 
     def parser(self) -> Callable[[str], Value]:
@@ -320,6 +323,8 @@ class LightItem(ScheduledItem):
 
     def _track_mode(self, old: State | None, new: State | None) -> None:
         if new is None or not self.modes:
+            return
+        if self._busy or (self._quiet_until is not None and new.last_changed < self._quiet_until):
             return
         if new.state == STATE_OFF and (old is None or old.state != STATE_OFF):
             self._off_since = new.last_changed
@@ -380,26 +385,69 @@ class LightItem(ScheduledItem):
         if self.control == CONTROL_DIMMABLE and kwargs.get("transition"):
             await self._power(False, {"transition": kwargs["transition"]}, "light")
             return
-        async with self._lock:
+        if self.control != CONTROL_MODES:
             await self._power(False)
+            return
+        async with self._lock:
+            self._begin()
+            try:
+                await self._power(False)
+                self._off_since = dt_util.utcnow()
+            finally:
+                self._end()
+
+    async def async_reset_mode(self) -> None:
+        async with self._lock:
+            self._begin()
+            try:
+                if self.is_on:
+                    await self._power(False)
+                    await self._wait_for(False)
+                await asyncio.sleep(self.reset_time + 1)
+                await self._power(True)
+                await self._wait_for(True)
+                self.mode_index = 0
+                self._off_since = None
+            finally:
+                self._end()
+
+    def _begin(self) -> None:
+        self._busy = True
+
+    def _end(self) -> None:
+        self._busy = False
+        self._quiet_until = dt_util.utcnow() + ECHO_GRACE
+        self.notify()
 
     async def _set_mode(self, mode: str | None) -> None:
         async with self._lock:
-            if not self.is_on:
-                await self._power(True)
-                await self._wait_for(True)
-                await asyncio.sleep(self.toggle_delay)
-            if mode is None or mode not in self.modes:
-                return
-            steps = steps_to_mode(self.mode_index, self.modes.index(mode), len(self.modes))
-            for _ in range(steps):
-                await self._power(False)
-                await self._wait_for(False)
-                await asyncio.sleep(self.toggle_delay)
-                await self._power(True)
-                await self._wait_for(True)
-                await asyncio.sleep(self.toggle_delay)
-            self.notify()
+            self._begin()
+            try:
+                if not self.is_on:
+                    off_for = None
+                    if self._off_since is not None:
+                        off_for = (dt_util.utcnow() - self._off_since).total_seconds()
+                    if off_for is not None and off_for < self.reset_time:
+                        self.mode_index = (self.mode_index + 1) % len(self.modes)
+                    else:
+                        self.mode_index = 0
+                    await self._power(True)
+                    await self._wait_for(True)
+                    self._off_since = None
+                    await asyncio.sleep(self.toggle_delay)
+                if mode is None or mode not in self.modes:
+                    return
+                steps = steps_to_mode(self.mode_index, self.modes.index(mode), len(self.modes))
+                for _ in range(steps):
+                    await self._power(False)
+                    await self._wait_for(False)
+                    await asyncio.sleep(self.toggle_delay)
+                    await self._power(True)
+                    await self._wait_for(True)
+                    self.mode_index = (self.mode_index + 1) % len(self.modes)
+                    await asyncio.sleep(self.toggle_delay)
+            finally:
+                self._end()
 
 
 def build_item(hass: HomeAssistant, entry: ConfigEntry, subentry: ConfigSubentry) -> Item:

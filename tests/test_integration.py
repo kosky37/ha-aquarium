@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 
 import pytest
 from homeassistant.config_entries import ConfigSubentryData
@@ -82,7 +83,8 @@ async def test_config_flow_and_light_subentry(hass: HomeAssistant) -> None:
     assert subentry.data["modes"] == ["Day", "Daybreak", "Night"]
 
 
-async def test_mode_cycling(hass: HomeAssistant) -> None:
+async def test_mode_cycling(hass: HomeAssistant, monkeypatch) -> None:
+    monkeypatch.setattr("custom_components.aquarium.controller.ECHO_GRACE", timedelta(seconds=0.3))
     await _booleans(hass, "leddy")
     await _setup(hass, _sub("light", "Leddy", LEDDY))
     assert hass.states.get("light.leddy").state == "off"
@@ -100,6 +102,12 @@ async def test_mode_cycling(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert hass.states.get("light.leddy").attributes["effect"] == "Daybreak"
 
+    hass.states.async_set("input_boolean.leddy", "off")
+    hass.states.async_set("input_boolean.leddy", "on")
+    await hass.async_block_till_done()
+    assert hass.states.get("light.leddy").attributes["effect"] == "Daybreak"
+
+    await asyncio.sleep(0.4)
     await _toggle(hass, "input_boolean.leddy", False)
     await _toggle(hass, "input_boolean.leddy", True)
     assert hass.states.get("light.leddy").attributes["effect"] == "Night"
@@ -174,3 +182,27 @@ async def test_adding_and_editing_items_on_a_running_aquarium(hass: HomeAssistan
     await hass.async_block_till_done()
     assert hass.states.get("switch.filter_schedule").state == "on"
     assert entry.subentries[subentry_id].data["schedule"] == "08:00 on\n22:00 off"
+
+
+async def test_reset_mode_button(hass: HomeAssistant) -> None:
+    await _booleans(hass, "leddy")
+    await _setup(hass, _sub("light", "Leddy", LEDDY))
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": "select.leddy_mode", "option": "Night"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("light.leddy").attributes["effect"] == "Night"
+    await hass.services.async_call("button", "press", {"entity_id": "button.leddy_reset_mode"}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get("input_boolean.leddy").state == "on"
+    assert hass.states.get("light.leddy").attributes["effect"] == "Day"
+
+
+async def test_off_then_quick_on_counts_as_a_cycle(hass: HomeAssistant) -> None:
+    await _booleans(hass, "leddy")
+    await _setup(hass, _sub("light", "Leddy", LEDDY))
+    await hass.services.async_call("light", "turn_on", {"entity_id": "light.leddy", "effect": "Daybreak"}, blocking=True)
+    await hass.services.async_call("light", "turn_off", {"entity_id": "light.leddy"}, blocking=True)
+    await hass.services.async_call("light", "turn_on", {"entity_id": "light.leddy", "effect": "Daybreak"}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get("light.leddy").attributes["effect"] == "Daybreak"
