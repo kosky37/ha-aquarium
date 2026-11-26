@@ -1,0 +1,13 @@
+{
+  "domain": "aquarium",
+  "name": "Aquarium",
+  "codeowners": ["@kosky37"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/kosky37/ha-aquarium",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/kosky37/ha-aquarium/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

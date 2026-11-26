@@ -1,0 +1,165 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an aquarium",
+        "description": "After creating it, use Add light, Add device and Add sensor on the integration page to add its equipment.",
+        "data": {
+          "name": "Name"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "light": {
+      "entry_type": "Light",
+      "initiate_flow": {
+        "user": "Add light",
+        "reconfigure": "Edit light"
+      },
+      "step": {
+        "user": {
+          "title": "Light",
+          "description": "Choose how this light is controlled.",
+          "data": {
+            "name": "Name",
+            "control": "Control"
+          },
+          "data_description": {
+            "control": "On/off: a smart plug or switch. Dimmable: a smart light with brightness. Modes by power cycling: a lamp like the Aquael LEDDY DAY & NIGHT that changes mode when it is switched off and on again quickly."
+          }
+        },
+        "details": {
+          "title": "Light settings",
+          "description": "Schedule: one change per line, for example 12:00 Day, 19:00 Daybreak, 20:00 off. Use on, off, a brightness such as 60% for dimmable lights, or a mode name.",
+          "data": {
+            "entity_id": "Controlled entity",
+            "modes": "Modes",
+            "toggle_delay": "Delay between toggles",
+            "reset_time": "Off time that resets the mode",
+            "transition": "Transition",
+            "schedule": "Schedule"
+          },
+          "data_description": {
+            "modes": "In the order the lamp goes through them. The first one is the mode the lamp starts in after being off for a while.",
+            "toggle_delay": "How long to wait after each off and each on while switching modes.",
+            "reset_time": "If the lamp stays off at least this long, it starts again from the first mode.",
+            "transition": "Fade time for scheduled changes, if the light supports it."
+          }
+        }
+      },
+      "error": {
+        "invalid_schedule": "Schedule line {line}: {reason}.",
+        "invalid_modes": "Enter at least two different modes.",
+        "reset_too_short": "Must be longer than the delay between toggles."
+      },
+      "abort": {
+        "reconfigure_successful": "The light was updated."
+      }
+    },
+    "device": {
+      "entry_type": "Device",
+      "initiate_flow": {
+        "user": "Add device",
+        "reconfigure": "Edit device"
+      },
+      "step": {
+        "user": {
+          "title": "Device",
+          "description": "Equipment switched by a smart plug or switch, such as CO2, a filter or a heater. Schedule: one change per line, for example 11:00 on and 19:00 off. Leave it empty to switch the device only by hand.",
+          "data": {
+            "name": "Name",
+            "kind": "Type",
+            "entity_id": "Controlled entity",
+            "schedule": "Schedule"
+          }
+        }
+      },
+      "error": {
+        "invalid_schedule": "Schedule line {line}: {reason}."
+      },
+      "abort": {
+        "reconfigure_successful": "The device was updated."
+      }
+    },
+    "sensor": {
+      "entry_type": "Sensor",
+      "initiate_flow": {
+        "user": "Add sensor",
+        "reconfigure": "Edit sensor"
+      },
+      "step": {
+        "user": {
+          "title": "Sensor",
+          "description": "Show a reading, such as water temperature or pH, with this aquarium. Set a minimum or maximum to get an Out of range alert.",
+          "data": {
+            "name": "Name",
+            "kind": "Type",
+            "entity_id": "Source sensor",
+            "min": "Minimum",
+            "max": "Maximum"
+          }
+        }
+      },
+      "error": {
+        "max_not_above_min": "The maximum must be higher than the minimum."
+      },
+      "abort": {
+        "reconfigure_successful": "The sensor was updated."
+      }
+    }
+  },
+  "selector": {
+    "control": {
+      "options": {
+        "switch": "On/off",
+        "dimmable": "Dimmable",
+        "modes": "Modes by power cycling"
+      }
+    },
+    "device_kind": {
+      "options": {
+        "co2": "CO2",
+        "filter": "Filter",
+        "heater": "Heater",
+        "pump": "Pump",
+        "air_pump": "Air pump",
+        "uv": "UV sterilizer",
+        "feeder": "Feeder",
+        "other": "Other"
+      }
+    },
+    "sensor_kind": {
+      "options": {
+        "temperature": "Temperature",
+        "ph": "pH",
+        "tds": "TDS",
+        "conductivity": "Conductivity",
+        "oxygen": "Oxygen",
+        "other": "Other"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "schedule": {
+        "name": "Schedule"
+      }
+    },
+    "sensor": {
+      "next_change": {
+        "name": "Next change"
+      }
+    },
+    "binary_sensor": {
+      "out_of_range": {
+        "name": "Out of range"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode"
+      }
+    }
+  }
+}
