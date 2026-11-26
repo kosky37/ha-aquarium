@@ -12,15 +12,14 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from . import AquariumConfigEntry
 from .const import DEVICE_KIND_ICONS
 from .controller import DeviceItem, Item, ScheduledItem
-from .entity import AquariumEntity, add_per_item
-from .schedule import format_value
+from .entity import AquariumEntity, add_per_item, schedule_attributes
 
 
 def _entities(item: Item) -> list[Entity]:
     entities: list[Entity] = []
     if isinstance(item, DeviceItem):
         entities.append(DeviceSwitch(item))
-    if isinstance(item, ScheduledItem) and item.points:
+    if isinstance(item, ScheduledItem):
         entities.append(ScheduleSwitch(item))
     return entities
 
@@ -47,14 +46,7 @@ class DeviceSwitch(AquariumEntity, SwitchEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        upcoming = self.item.next_change
-        return {
-            "target": self.item.target,
-            "schedule": self.item.schedule_text,
-            "schedule_enabled": self.item.schedule_enabled,
-            "next_change": upcoming[0].isoformat() if upcoming else None,
-            "next_value": format_value(upcoming[1]) if upcoming else None,
-        }
+        return {**schedule_attributes(self.item), "control": "device"}
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.item.async_turn_on()

@@ -24,7 +24,7 @@ KIND_DEVICE_CLASSES = {
 def _entities(item: Item) -> list[Entity]:
     if isinstance(item, SensorItem):
         return [MirrorSensor(item)]
-    if isinstance(item, ScheduledItem) and item.points:
+    if isinstance(item, ScheduledItem):
         return [NextChangeSensor(item)]
     return []
 

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from typing import Any
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN, SUBENTRY_DEVICE, SUBENTRY_LIGHT, SUBENTRY_SENSOR
-from .controller import Item
+from .controller import Item, ScheduledItem
+from .schedule import format_value
 
 MODEL_NAMES = {
     SUBENTRY_LIGHT: "Light",
@@ -54,6 +56,19 @@ class AquariumEntity(Entity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self.async_on_remove(self.item.add_listener(self.async_write_ha_state))
+
+
+def schedule_attributes(item: ScheduledItem) -> dict[str, Any]:
+    upcoming = item.next_change
+    return {
+        "target": item.target,
+        "kind": item.kind,
+        "schedule": item.schedule_text,
+        "schedule_points": item.schedule_points,
+        "schedule_enabled": item.schedule_enabled,
+        "next_change": upcoming[0].isoformat() if upcoming else None,
+        "next_value": format_value(upcoming[1]) if upcoming else None,
+    }
 
 
 def add_per_item(

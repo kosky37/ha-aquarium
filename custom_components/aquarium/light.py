@@ -17,8 +17,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from . import AquariumConfigEntry
 from .const import CONTROL_DIMMABLE, CONTROL_MODES, LIGHT_ICON
 from .controller import LightItem
-from .entity import AquariumEntity, add_per_item
-from .schedule import format_value
+from .entity import AquariumEntity, add_per_item, schedule_attributes
 
 
 async def async_setup_entry(
@@ -67,13 +66,10 @@ class AquariumLight(AquariumEntity, LightEntity, RestoreEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        upcoming = self.item.next_change
         return {
-            "target": self.item.target,
-            "schedule": self.item.schedule_text,
-            "schedule_enabled": self.item.schedule_enabled,
-            "next_change": upcoming[0].isoformat() if upcoming else None,
-            "next_value": format_value(upcoming[1]) if upcoming else None,
+            **schedule_attributes(self.item),
+            "control": self.item.control,
+            "modes": list(self.item.modes),
         }
 
     async def async_added_to_hass(self) -> None:

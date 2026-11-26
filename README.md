@@ -52,6 +52,25 @@ After a restart, the integration checks every item against its schedule and only
 
 The integration can't read the lamp's mode, so it works it out from the plug's off and on changes. While it is switching modes itself, and for a few seconds after, it ignores the plug's status reports, because some plugs report an extra off and on after a command. If the lamp ever shows a different mode, press **Reset mode**: the lamp stays off longer than the reset time and comes back in the first mode.
 
+## Dashboard card
+
+The integration comes with an **Aquarium** card, loaded automatically. Add it from the card picker, or with:
+
+```yaml
+type: custom:aquarium-card
+```
+
+- **Header** with the aquarium's sensors, which turn red when out of range. Tap one for its history.
+- **A row per light and device**: power button, what it is doing now and what happens next, mode buttons for lamps with modes, a brightness slider for dimmable lights, a Reset mode button, and an **Auto** switch to pause the schedule.
+- **A 24-hour timeline** per row, with a red line at the current time.
+  - Drag the edge between two periods to move the change.
+  - Tap a period to set its exact times, choose its mode or brightness, split it in two, or merge it into the previous one.
+  - Changes are drafts until you press **Save**, and take effect right away when saved.
+
+Options: `aquarium` (which aquarium, when you have more than one), `title`, and `snap` (minutes per step when dragging, default 5).
+
+The card saves schedules through the `aquarium.set_schedule` action, which you can also use in scripts.
+
 ## Entities
 
 | Item | Entities |

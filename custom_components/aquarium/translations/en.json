@@ -166,5 +166,21 @@
         "name": "Reset mode"
       }
     }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Replaces the daily schedule of an aquarium light or device.",
+      "fields": {
+        "entity_id": {
+          "name": "Light or device",
+          "description": "The aquarium light or device switch."
+        },
+        "schedule": {
+          "name": "Schedule",
+          "description": "One change per line, such as 12:00 Day or 20:00 off, or a list of points with at and value."
+        }
+      }
+    }
   }
 }

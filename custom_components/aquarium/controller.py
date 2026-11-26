@@ -51,6 +51,10 @@ from .schedule import (
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def local_now() -> datetime:
+    return dt_util.now()
+
 WAIT_TIMEOUT = 15.0
 ECHO_GRACE = timedelta(seconds=5)
 BRIGHTNESS_TOLERANCE = 3
@@ -146,6 +150,7 @@ class ScheduledItem(Item):
         self.points: list[Point] = parse_schedule(self.data.get(CONF_SCHEDULE), self.parser())
         self.schedule_enabled = True
         self._lock = asyncio.Lock()
+        self._timers: list[CALLBACK_TYPE] = []
 
     def parser(self) -> Callable[[str], Value]:
         return switch_parser
@@ -160,18 +165,35 @@ class ScheduledItem(Item):
         return format_schedule(self.points)
 
     @property
+    def schedule_points(self) -> list[dict[str, Any]]:
+        return [{"at": p.at.strftime("%H:%M"), "value": p.value} for p in self.points]
+
+    def parse(self, text: str) -> list[Point]:
+        return parse_schedule(text, self.parser())
+
+    @property
     def next_change(self) -> tuple[datetime, Value] | None:
-        return next_change(self.points, dt_util.now())
+        return next_change(self.points, local_now())
 
     @property
     def scheduled_value(self) -> Value | None:
-        return value_at(self.points, dt_util.now())
+        return value_at(self.points, local_now())
 
     @callback
     def async_start(self) -> None:
         super().async_start()
+        self._schedule_timers()
+        self._unsubs.append(async_at_started(self.hass, self._started))
+
+    @callback
+    def async_stop(self) -> None:
+        self._clear_timers()
+        super().async_stop()
+
+    @callback
+    def _schedule_timers(self) -> None:
         for point in self.points:
-            self._unsubs.append(
+            self._timers.append(
                 async_track_time_change(
                     self.hass,
                     self._point_job(point.value),
@@ -180,7 +202,21 @@ class ScheduledItem(Item):
                     second=0,
                 )
             )
-        self._unsubs.append(async_at_started(self.hass, self._started))
+
+    @callback
+    def _clear_timers(self) -> None:
+        while self._timers:
+            self._timers.pop()()
+
+    @callback
+    def async_update_schedule(self, text: str) -> None:
+        self.points = self.parse(text)
+        self.data[CONF_SCHEDULE] = text
+        self._clear_timers()
+        self._schedule_timers()
+        self.notify()
+        if self.schedule_enabled:
+            self.hass.async_create_task(self._safe(self.async_reconcile()))
 
     def _point_job(self, value: Value) -> Callable[[datetime], Any]:
         async def run(now: datetime) -> None:

@@ -1,0 +1,13 @@
+set_schedule:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          integration: aquarium
+    schedule:
+      required: true
+      example: "12:00 Day\n19:00 Daybreak\n20:00 off"
+      selector:
+        text:
+          multiline: true

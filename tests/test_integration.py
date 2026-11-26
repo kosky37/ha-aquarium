@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from homeassistant.config_entries import ConfigSubentryData
@@ -164,7 +164,8 @@ async def test_adding_and_editing_items_on_a_running_aquarium(hass: HomeAssistan
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert hass.states.get("switch.filter").state == "off"
-    assert hass.states.get("switch.filter_schedule") is None
+    assert hass.states.get("switch.filter_schedule").state == "on"
+    assert hass.states.get("sensor.filter_next_change").state == "unknown"
 
     await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.filter"}, blocking=True)
     await hass.async_block_till_done()
@@ -206,3 +207,43 @@ async def test_off_then_quick_on_counts_as_a_cycle(hass: HomeAssistant) -> None:
     await hass.services.async_call("light", "turn_on", {"entity_id": "light.leddy", "effect": "Daybreak"}, blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("light.leddy").attributes["effect"] == "Daybreak"
+
+
+async def test_set_schedule_service_updates_in_place(hass: HomeAssistant, monkeypatch) -> None:
+    fixed = datetime(2026, 11, 26, 13, 0, tzinfo=UTC)
+    monkeypatch.setattr("custom_components.aquarium.controller.local_now", lambda: fixed)
+    await _booleans(hass, "leddy")
+    entry = await _setup(hass, _sub("light", "Leddy", {**LEDDY, "schedule": "12:00 Daybreak\n20:00 off"}))
+    assert hass.states.get("light.leddy").attributes["effect"] == "Daybreak"
+    toggles: list[str] = []
+    hass.bus.async_listen("state_changed", lambda e: toggles.append(e.data["new_state"].state) if e.data["entity_id"] == "input_boolean.leddy" else None)
+    light_entity = hass.states.get("light.leddy")
+
+    await hass.services.async_call(
+        "aquarium",
+        "set_schedule",
+        {"entity_id": "light.leddy", "schedule": [{"at": "21:00", "value": "off"}, {"at": "11:00", "value": "daybreak"}]},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    subentry = next(iter(entry.subentries.values()))
+    assert subentry.data["schedule"] == "11:00 Daybreak\n21:00 off"
+    state = hass.states.get("light.leddy")
+    assert state.attributes["schedule_points"] == [{"at": "11:00", "value": "Daybreak"}, {"at": "21:00", "value": "off"}]
+    assert state.attributes["effect"] == "Daybreak"
+    assert state.context is not None and light_entity is not None
+    assert toggles == []
+
+    with pytest.raises(Exception, match="line 1"):
+        await hass.services.async_call(
+            "aquarium", "set_schedule", {"entity_id": "light.leddy", "schedule": "13:00 sunset"}, blocking=True
+        )
+
+    await hass.services.async_call(
+        "aquarium", "set_schedule", {"entity_id": "light.leddy", "schedule": "12:00 Night\n21:00 off"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    await hass.async_block_till_done()
+    assert hass.states.get("light.leddy").attributes["effect"] == "Night"
+    assert toggles == ["off", "on"]
